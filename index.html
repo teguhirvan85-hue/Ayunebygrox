@@ -1,983 +1,883 @@
-import React, { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Bell,
-  CandlestickChart,
-  ChevronDown,
-  CircleUser,
-  Compass,
-  Download,
-  Globe,
-  LineChart,
-  Maximize2,
-  Minimize2,
-  Plus,
-  Search,
-  Settings,
-  SlidersHorizontal,
-  Wallet,
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spectro – Trade (Single File)</title>
 
-/**
- * Single-file, interactive replica inspired by the provided UI.
- * Notes:
- * - Uses Tailwind for styling.
- * - Uses recharts for the chart.
- * - All data is mocked and fully interactive (tabs, asset switch, timeframe, order type, slider, table tabs, etc.).
- */
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-const assets = [
-  {
-    key: "BTC",
-    name: "Bitcoin",
-    icon: "₿",
-    iconBg: "bg-orange-500",
-    amount: 17.61,
-    sub: "$1,165,173.69",
-    priceLine: "1 BTC = $65,173.69",
-  },
-  {
-    key: "NEAR",
-    name: "Near",
-    icon: "N",
-    iconBg: "bg-slate-800",
-    amount: 8.6,
-    sub: "$2,105,103.09",
-    priceLine: "1 NEAR = $6.24",
-  },
-  {
-    key: "ADA",
-    name: "Cardano",
-    icon: "A",
-    iconBg: "bg-blue-600",
-    amount: 10.6,
-    sub: "$3,150,145.60",
-    priceLine: "1 ADA = $0.61",
-  },
-  {
-    key: "AAVE",
-    name: "Aave",
-    icon: "A",
-    iconBg: "bg-indigo-600",
-    amount: 17.61,
-    sub: "$1,100,153.69",
-    priceLine: "1 AAVE = $98.43",
-  },
-];
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-const navItems = [
-  { label: "Dashboard", active: false },
-  { label: "Trade", active: true },
-  { label: "Market", active: false },
-  { label: "Earn", active: false },
-  { label: "More", active: false },
-];
+  <style>
+    /* extra: smoother look similar to screenshot */
+    :root{
+      --glass: rgba(255,255,255,.06);
+      --glass2: rgba(255,255,255,.04);
+      --border: rgba(255,255,255,.10);
+      --border2: rgba(255,255,255,.14);
+      --textDim: rgba(255,255,255,.55);
+      --textDim2: rgba(255,255,255,.40);
+      --shadowA: 0 30px 120px rgba(0,0,0,.60);
+      --shadowB: 0 12px 40px rgba(0,0,0,.35);
+    }
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadowB);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .glass2 {
+      background: var(--glass2);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .soft-border { border: 1px solid var(--border); }
+    .soft-border2 { border: 1px solid var(--border2); }
+    .no-select { user-select: none; }
+    /* range look */
+    input[type="range"] { accent-color: #22c55e; }
+  </style>
+</head>
 
-function cn(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
+<body class="min-h-screen w-full text-white bg-gradient-to-b from-[#1a1a1d] via-[#121214] to-[#0b0b0d]">
+  <div class="mx-auto max-w-[1320px] px-5 pt-6">
+    <div class="rounded-3xl soft-border bg-black/40" style="box-shadow: var(--shadowA);">
 
-function useMockSeries(timeframe) {
-  // stable deterministic-ish series per timeframe
-  return useMemo(() => {
-    const base = [
-      { t: "10.30", v: 128 },
-      { t: "10.45", v: 112 },
-      { t: "11.00", v: 123 },
-      { t: "11.15", v: 118 },
-      { t: "11.30", v: 147 },
-      { t: "11.45", v: 125 },
-      { t: "12.00", v: 132 },
-      { t: "12.15", v: 115 },
-      { t: "12.30", v: 128 },
-      { t: "12.45", v: 108 },
-      { t: "13.00", v: 121 },
-    ];
-
-    const mult =
-      timeframe === "1s"
-        ? 0.5
-        : timeframe === "1m"
-        ? 1
-        : timeframe === "5m"
-        ? 1.05
-        : timeframe === "15m"
-        ? 1.1
-        : timeframe === "1h"
-        ? 1.18
-        : timeframe === "4h"
-        ? 1.25
-        : 1.3;
-
-    return base.map((p, i) => ({
-      t: p.t,
-      v: Math.round((p.v * mult + (i % 3) * 2) * 10) / 10,
-    }));
-  }, [timeframe]);
-}
-
-function SoftCard({ className, children }) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-white/10 bg-white/5 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-md",
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Pill({ active, children, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "rounded-xl px-3 py-1.5 text-xs font-medium transition",
-        active
-          ? "bg-white/10 text-white"
-          : "bg-transparent text-white/60 hover:bg-white/5 hover:text-white"
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SegButton({ active, children, onClick, className }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "h-9 rounded-xl px-3 text-sm font-medium transition",
-        active
-          ? "bg-white/10 text-white"
-          : "bg-transparent text-white/60 hover:bg-white/5 hover:text-white",
-        className
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Toggle({ checked, onChange, label }) {
-  return (
-    <label className="flex items-center gap-2 text-sm text-white/70 select-none">
-      <input
-        type="checkbox"
-        className="h-4 w-4 rounded border-white/15 bg-white/5 accent-emerald-500"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span>{label}</span>
-    </label>
-  );
-}
-
-function TooltipBox({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl border border-white/10 bg-black/70 px-3 py-2 text-xs text-white shadow-2xl">
-      <div className="text-white/60">{label}</div>
-      <div className="mt-1 font-semibold">${payload[0].value}</div>
-    </div>
-  );
-}
-
-export default function SpectroTradeReplica() {
-  const [activeNav, setActiveNav] = useState("Trade");
-  const [selectedAsset, setSelectedAsset] = useState("BTC");
-  const [quote, setQuote] = useState("USD");
-  const [timeframe, setTimeframe] = useState("1m");
-  const [chartMode, setChartMode] = useState("line"); // line | candle (visual toggle only)
-  const [chartFullscreen, setChartFullscreen] = useState(false);
-
-  const [orderTab, setOrderTab] = useState("Market"); // Market | Limit | Advance
-  const [amountPct, setAmountPct] = useState(20);
-  const [reduceOnly, setReduceOnly] = useState(false);
-  const [tpsl, setTpsl] = useState(false);
-  const [walletConnected, setWalletConnected] = useState(false);
-
-  const [bottomTab, setBottomTab] = useState("Transaction");
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [viewSettingsOpen, setViewSettingsOpen] = useState(false);
-
-  const series = useMockSeries(timeframe);
-  const asset = assets.find((a) => a.key === selectedAsset) ?? assets[0];
-
-  const computed = useMemo(() => {
-    // fake numbers to feel real
-    const available = walletConnected ? 0.0798 : 0;
-    const amount = Number(((available * amountPct) / 100).toFixed(5));
-    const estPrice = selectedAsset === "BTC" ? 95861.89 : selectedAsset === "ADA" ? 0.61 : selectedAsset === "NEAR" ? 6.24 : 98.43;
-    const orderValue = Number((amount * estPrice).toFixed(2));
-    return { available, amount, estPrice, orderValue };
-  }, [walletConnected, amountPct, selectedAsset]);
-
-  const txRows = useMemo(
-    () => [
-      {
-        date: "24 Jan",
-        type: "Sell",
-        price: 694.468,
-        usd: 2.29,
-        zec: 3.02,
-        pair: "2.10K USDC",
-        trader: "Binance",
-      },
-      {
-        date: "20 Feb",
-        type: "Buy",
-        price: 694.468,
-        usd: 0.79,
-        zec: 0.0,
-        pair: "0.79 USDC",
-        trader: "Router",
-      },
-      {
-        date: "15 Mar",
-        type: "Sell",
-        price: 694.468,
-        usd: 149.87,
-        zec: 0.22,
-        pair: "149.88 USDC",
-        trader: "Bybit",
-      },
-    ],
-    []
-  );
-
-  const bottomTabs = [
-    "Transaction",
-    "Active DCAs",
-    "Holders",
-    "Bubblemap",
-    "Top Trades",
-  ];
-
-  return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-[#1a1a1d] via-[#121214] to-[#0b0b0d] text-white">
-      {/* Window chrome */}
-      <div className="mx-auto max-w-[1320px] px-5 pt-6">
-        <div className="rounded-3xl border border-white/10 bg-black/40 shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
-          {/* Top bar */}
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-red-500/90" />
-                <div className="h-3 w-3 rounded-full bg-yellow-400/90" />
-                <div className="h-3 w-3 rounded-full bg-green-500/90" />
-              </div>
-              <div className="ml-3 flex items-center gap-2">
-                <button className="rounded-lg p-2 text-white/70 hover:bg-white/5 hover:text-white">
-                  <ArrowLeft size={18} />
-                </button>
-                <button className="rounded-lg p-2 text-white/70 hover:bg-white/5 hover:text-white">
-                  <ArrowRight size={18} />
-                </button>
-              </div>
-            </div>
-
-            <div className="hidden w-[520px] items-center justify-center md:flex">
-              <div className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center text-sm text-white/70">
-                https://www.dashboard/trade.com
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button className="rounded-xl p-2 text-white/70 hover:bg-white/5 hover:text-white">
-                <Download size={18} />
-              </button>
-              <button className="rounded-xl p-2 text-white/70 hover:bg-white/5 hover:text-white">
-                <Minimize2 size={18} />
-              </button>
-              <button className="rounded-xl p-2 text-white/70 hover:bg-white/5 hover:text-white">
-                <Plus size={18} />
-              </button>
-            </div>
+      <!-- Top window chrome -->
+      <div class="flex items-center justify-between px-5 py-4">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <div class="h-3 w-3 rounded-full bg-red-500/90"></div>
+            <div class="h-3 w-3 rounded-full bg-yellow-400/90"></div>
+            <div class="h-3 w-3 rounded-full bg-green-500/90"></div>
           </div>
 
-          {/* App header */}
-          <div className="flex flex-col gap-4 px-5 pb-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/5">
-                    <div className="h-6 w-6 rotate-12 rounded-md bg-white/90" />
-                  </div>
-                  <div className="text-xl font-semibold tracking-tight">Spectro</div>
-                </div>
-
-                <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
-                  {navItems.map((n) => (
-                    <button
-                      key={n.label}
-                      onClick={() => {
-                        setActiveNav(n.label);
-                      }}
-                      className={cn(
-                        "rounded-xl px-4 py-2 text-sm font-medium transition",
-                        activeNav === n.label
-                          ? "bg-white/10 text-white"
-                          : "text-white/60 hover:bg-white/5 hover:text-white"
-                      )}
-                    >
-                      {n.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
-                <div className="relative w-full sm:w-[420px]">
-                  <Search
-                    size={18}
-                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
-                  />
-                  <input
-                    placeholder="Search..."
-                    className="h-11 w-full rounded-2xl border border-white/10 bg-white/5 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/20"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        // mock search behavior: switch asset by keyword
-                        const v = (e.currentTarget.value || "").toLowerCase();
-                        const found = assets.find(
-                          (a) =>
-                            a.key.toLowerCase() === v ||
-                            a.name.toLowerCase().includes(v)
-                        );
-                        if (found) setSelectedAsset(found.key);
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button className="rounded-2xl border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white">
-                    <Globe size={18} />
-                  </button>
-                  <button className="rounded-2xl border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white">
-                    <Bell size={18} />
-                  </button>
-                  <button className="rounded-2xl border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white">
-                    <CircleUser size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Asset row */}
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-              {assets.map((a) => (
-                <button
-                  key={a.key}
-                  onClick={() => setSelectedAsset(a.key)}
-                  className={cn(
-                    "text-left",
-                    selectedAsset === a.key ? "" : ""
-                  )}
-                >
-                  <SoftCard
-                    className={cn(
-                      "p-4 transition",
-                      selectedAsset === a.key
-                        ? "border-white/20 bg-white/7"
-                        : "hover:border-white/15 hover:bg-white/6"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            "grid h-9 w-9 place-items-center rounded-2xl text-sm font-semibold",
-                            a.iconBg
-                          )}
-                        >
-                          {a.icon}
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold">{a.name}</div>
-                          <div className="text-xs text-white/45">
-                            {String(a.amount).replace(".", ",")} {a.key}
-                          </div>
-                          <div className="text-xs text-white/35">{a.sub}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70">
-                          {quote}
-                        </div>
-                        <ChevronDown size={16} className="text-white/45" />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 text-xs text-emerald-400/90">
-                      {a.priceLine}
-                    </div>
-                  </SoftCard>
-                </button>
-              ))}
-            </div>
+          <div class="ml-3 flex items-center gap-2">
+            <button class="rounded-lg p-2 text-white/70 hover:bg-white/5 hover:text-white" title="Back">←</button>
+            <button class="rounded-lg p-2 text-white/70 hover:bg-white/5 hover:text-white" title="Forward">→</button>
           </div>
+        </div>
 
-          {/* Main content */}
-          <div className="grid grid-cols-1 gap-4 px-5 pb-6 lg:grid-cols-[1.6fr_0.9fr]">
-            {/* Chart */}
-            <SoftCard className={cn("p-4", chartFullscreen && "lg:col-span-2")}
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "grid h-9 w-9 place-items-center rounded-2xl text-sm font-semibold",
-                        asset.iconBg
-                      )}
-                    >
-                      {asset.icon}
-                    </div>
-                    <button
-                      onClick={() => {
-                        // cycle through assets
-                        const idx = assets.findIndex((x) => x.key === selectedAsset);
-                        setSelectedAsset(assets[(idx + 1) % assets.length].key);
-                      }}
-                      className="flex items-center gap-2 rounded-xl px-2 py-1 text-sm font-semibold text-white/90 hover:bg-white/5"
-                      title="Switch asset"
-                    >
-                      {asset.name}
-                      <ChevronDown size={16} className="text-white/45" />
-                    </button>
-                  </div>
-
-                  <div className="hidden items-center gap-2 md:flex">
-                    {[
-                      { k: "1s", t: "1s" },
-                      { k: "1m", t: "1m" },
-                      { k: "5m", t: "5m" },
-                      { k: "15m", t: "15m" },
-                      { k: "1h", t: "1h" },
-                      { k: "4h", t: "4h" },
-                      { k: "D", t: "D" },
-                    ].map((x) => (
-                      <Pill
-                        key={x.k}
-                        active={timeframe === x.k}
-                        onClick={() => setTimeframe(x.k)}
-                      >
-                        {x.t}
-                      </Pill>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 md:justify-end">
-                  <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
-                    <button
-                      onClick={() => setChartMode("line")}
-                      className={cn(
-                        "rounded-xl p-2",
-                        chartMode === "line"
-                          ? "bg-white/10 text-white"
-                          : "text-white/60 hover:bg-white/5 hover:text-white"
-                      )}
-                      title="Line/Area"
-                    >
-                      <LineChart size={18} />
-                    </button>
-                    <button
-                      onClick={() => setChartMode("candle")}
-                      className={cn(
-                        "rounded-xl p-2",
-                        chartMode === "candle"
-                          ? "bg-white/10 text-white"
-                          : "text-white/60 hover:bg-white/5 hover:text-white"
-                      )}
-                      title="Candlestick (visual toggle)"
-                    >
-                      <CandlestickChart size={18} />
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => setChartFullscreen((v) => !v)}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
-                    title={chartFullscreen ? "Exit focus" : "Focus"}
-                  >
-                    {chartFullscreen ? (
-                      <Minimize2 size={18} />
-                    ) : (
-                      <Maximize2 size={18} />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => setQuote((q) => (q === "USD" ? "USDT" : "USD"))}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white"
-                    title="Toggle quote"
-                  >
-                    {quote}
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-[44px_1fr] gap-3">
-                {/* Left tool rail */}
-                <div className="flex flex-col items-center gap-2">
-                  {[Compass, LineChart, SlidersHorizontal, CandlestickChart, Settings].map(
-                    (Ico, idx) => (
-                      <button
-                        key={idx}
-                        className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
-                      >
-                        <Ico size={18} />
-                      </button>
-                    )
-                  )}
-                  <div className="mt-2 h-px w-8 bg-white/10" />
-                  <button className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white">
-                    <span className="text-sm font-semibold">T</span>
-                  </button>
-                </div>
-
-                {/* Chart surface */}
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                  <div className="h-[320px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={series} margin={{ left: 10, right: 10, top: 10, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#22c55e" stopOpacity={0.35} />
-                            <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                        <XAxis
-                          dataKey="t"
-                          tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 12 }}
-                          axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 12 }}
-                          axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
-                          tickLine={false}
-                          domain={[100, 150]}
-                          tickFormatter={(v) => `$${v}`}
-                        />
-                        <Tooltip content={<TooltipBox />} />
-                        <Area
-                          type="monotone"
-                          dataKey="v"
-                          stroke="#22c55e"
-                          strokeWidth={2}
-                          fill="url(#g)"
-                          dot={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between text-xs text-white/45">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">
-                        {chartMode === "line" ? "Area" : "Candles"}
-                      </span>
-                      <span>•</span>
-                      <span>{asset.key}/{quote}</span>
-                    </div>
-                    <div className="text-white/35">$100.00 — $150.00</div>
-                  </div>
-                </div>
-              </div>
-            </SoftCard>
-
-            {/* Order panel */}
-            <SoftCard className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
-                  {["Market", "Limit", "Advance"].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setOrderTab(t)}
-                      className={cn(
-                        "h-9 rounded-xl px-4 text-sm font-semibold transition",
-                        orderTab === t
-                          ? "bg-white/10 text-white"
-                          : "text-white/60 hover:bg-white/5 hover:text-white"
-                      )}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setFilterOpen((v) => !v)}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
-                  title="Quick tools"
-                >
-                  <SlidersHorizontal size={18} />
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between text-sm text-white/70">
-                  <div>Available to Trade :</div>
-                  <div className="text-white/45">{walletConnected ? `${computed.available} ${selectedAsset}` : "—"}</div>
-                </div>
-                <div className="flex items-center justify-between text-sm text-white/70">
-                  <div>Position:</div>
-                  <div className="text-white/45">—</div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-white/60">Amount</div>
-                    <div className="flex items-center gap-2 text-xs text-white/60">
-                      <span>{walletConnected ? computed.amount.toFixed(5) : "0.00000"}</span>
-                      <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">
-                        {selectedAsset}
-                      </span>
-                      <ChevronDown size={14} className="text-white/45" />
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={amountPct}
-                      onChange={(e) => setAmountPct(Number(e.target.value))}
-                      className="w-full accent-emerald-500"
-                    />
-                    <div className="mt-2 flex items-center justify-between text-xs text-white/45">
-                      <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">
-                        {amountPct}%
-                      </div>
-                      <div>20 %</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => {
-                      if (!walletConnected) return;
-                      alert(`Placed ${orderTab} Buy/Long: ${computed.amount} ${selectedAsset}`);
-                    }}
-                    className={cn(
-                      "h-11 rounded-2xl font-semibold transition",
-                      walletConnected
-                        ? "bg-emerald-500/90 text-black hover:bg-emerald-400"
-                        : "bg-white/10 text-white/40 cursor-not-allowed"
-                    )}
-                  >
-                    Buy/Long
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!walletConnected) return;
-                      alert(`Placed ${orderTab} Sell/Short: ${computed.amount} ${selectedAsset}`);
-                    }}
-                    className={cn(
-                      "h-11 rounded-2xl font-semibold transition",
-                      walletConnected
-                        ? "bg-white/10 text-rose-400 hover:bg-white/15"
-                        : "bg-white/10 text-white/40 cursor-not-allowed"
-                    )}
-                  >
-                    Sell/Short
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  <Toggle checked={reduceOnly} onChange={setReduceOnly} label="Reduce Only" />
-                  <Toggle checked={tpsl} onChange={setTpsl} label="Take Profit / Stop Loss" />
-                </div>
-
-                <button
-                  onClick={() => setWalletConnected((v) => !v)}
-                  className={cn(
-                    "mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-semibold transition",
-                    walletConnected
-                      ? "bg-white/10 text-white hover:bg-white/15"
-                      : "bg-emerald-500/90 text-black hover:bg-emerald-400"
-                  )}
-                >
-                  <Wallet size={18} />
-                  {walletConnected ? "Wallet Connected" : "Connect Wallet to Trade"}
-                </button>
-
-                <div className="mt-4 space-y-2 text-sm">
-                  <Row label="Order Value:" value={walletConnected ? `$${computed.orderValue}` : "—"} />
-                  <Row label="Est. Liq. Price:" value="—" />
-                  <Row label="Position Margin:" value="$0.00" />
-                  <Row label="Est. Price:" value={walletConnected ? `$${computed.estPrice}` : "—"} />
-                  <Row label="Slippage:" value={walletConnected ? "Est: 0.00% | Max: 1%" : "—"} green />
-                  <Row label="Fees:" value={walletConnected ? "Taker: 0% | Maker: 0%" : "—"} />
-                </div>
-
-                {filterOpen && (
-                  <div className="rounded-2xl border border-white/10 bg-black/30 p-3 text-sm text-white/70">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-white">Quick tools</div>
-                      <button
-                        className="rounded-xl px-2 py-1 text-white/60 hover:bg-white/5 hover:text-white"
-                        onClick={() => setFilterOpen(false)}
-                      >
-                        Close
-                      </button>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
-                        onClick={() => setAmountPct(25)}
-                      >
-                        Set 25%
-                      </button>
-                      <button
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
-                        onClick={() => setAmountPct(50)}
-                      >
-                        Set 50%
-                      </button>
-                      <button
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
-                        onClick={() => setAmountPct(75)}
-                      >
-                        Set 75%
-                      </button>
-                      <button
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
-                        onClick={() => setAmountPct(100)}
-                      >
-                        Set 100%
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </SoftCard>
-
-            {/* Bottom table */}
-            <SoftCard className={cn("p-4", chartFullscreen && "lg:col-span-2")}
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
-                  {bottomTabs.map((t) => (
-                    <SegButton
-                      key={t}
-                      active={bottomTab === t}
-                      onClick={() => setBottomTab(t)}
-                      className="text-xs md:text-sm"
-                    >
-                      {t}
-                    </SegButton>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setFilterOpen((v) => !v)}
-                    className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white"
-                  >
-                    <SlidersHorizontal size={16} />
-                    Filter
-                  </button>
-                  <button
-                    onClick={() => setViewSettingsOpen((v) => !v)}
-                    className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white"
-                  >
-                    <Settings size={16} />
-                    View Settings
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
-                <table className="w-full">
-                  <thead className="bg-white/5">
-                    <tr className="text-left text-xs text-white/55">
-                      <th className="px-4 py-3 font-medium">Date</th>
-                      <th className="px-4 py-3 font-medium">Type</th>
-                      <th className="px-4 py-3 font-medium">Price</th>
-                      <th className="px-4 py-3 font-medium">USD</th>
-                      <th className="px-4 py-3 font-medium">ZEC</th>
-                      <th className="px-4 py-3 font-medium">PAIR</th>
-                      <th className="px-4 py-3 font-medium">TRADER</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-black/20">
-                    {bottomTab !== "Transaction" ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-4 py-10 text-center text-sm text-white/55"
-                        >
-                          <div className="mx-auto max-w-md">
-                            <div className="text-white font-semibold">{bottomTab}</div>
-                            <div className="mt-1 text-white/45">
-                              This panel is interactive (tabs). Hook it up to your API
-                              when ready.
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      txRows.map((r, i) => {
-                        const isSell = r.type.toLowerCase() === "sell";
-                        return (
-                          <tr
-                            key={i}
-                            className="border-t border-white/10 text-sm text-white/80 hover:bg-white/5"
-                          >
-                            <td className="px-4 py-3 text-white/60">{r.date}</td>
-                            <td
-                              className={cn(
-                                "px-4 py-3 font-medium",
-                                isSell ? "text-rose-400" : "text-emerald-400"
-                              )}
-                            >
-                              {r.type}
-                            </td>
-                            <td className={cn("px-4 py-3", isSell ? "text-rose-400" : "text-emerald-400")}>
-                              ${r.price.toFixed(4)}
-                            </td>
-                            <td className={cn("px-4 py-3", isSell ? "text-rose-400" : "text-emerald-400")}>
-                              ${r.usd}
-                            </td>
-                            <td className={cn("px-4 py-3", isSell ? "text-rose-400" : "text-emerald-400")}>
-                              {r.zec.toFixed(2)}
-                            </td>
-                            <td className={cn("px-4 py-3", isSell ? "text-rose-400" : "text-emerald-400")}>
-                              {r.pair}
-                            </td>
-                            <td className="px-4 py-3 text-white/55">{r.trader}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {viewSettingsOpen && (
-                <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3 text-sm text-white/70">
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold text-white">View settings</div>
-                    <button
-                      className="rounded-xl px-2 py-1 text-white/60 hover:bg-white/5 hover:text-white"
-                      onClick={() => setViewSettingsOpen(false)}
-                    >
-                      Close
-                    </button>
-                  </div>
-                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <button
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
-                      onClick={() => setChartMode((m) => (m === "line" ? "candle" : "line"))}
-                    >
-                      Toggle chart mode
-                    </button>
-                    <button
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
-                      onClick={() => setQuote((q) => (q === "USD" ? "USDT" : "USD"))}
-                    >
-                      Toggle quote
-                    </button>
-                  </div>
-                </div>
-              )}
-            </SoftCard>
-
-            {/* Market trades mini panel */}
-            <SoftCard className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
-                  {["Market Trades", "My Trades"].map((t) => (
-                    <button
-                      key={t}
-                      className={cn(
-                        "h-9 rounded-xl px-4 text-sm font-semibold transition",
-                        t === "Market Trades"
-                          ? "bg-white/10 text-white"
-                          : "text-white/60 hover:bg-white/5 hover:text-white"
-                      )}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-
-                <button className="rounded-2xl border border-white/10 bg-white/5 p-2 text-white/60 hover:bg-white/10 hover:text-white">
-                  <Plus size={18} />
-                </button>
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
-                <div className="grid grid-cols-3 bg-white/5 px-4 py-3 text-xs text-white/55">
-                  <div>Price (USDT)</div>
-                  <div className="text-center">Amount (BTC)</div>
-                  <div className="text-right">Time</div>
-                </div>
-                <div className="divide-y divide-white/10 bg-black/20">
-                  {[
-                    { p: 95861.89, a: 0.00079, t: "14:30:33", s: "sell" },
-                    { p: 95860.12, a: 0.00112, t: "14:30:21", s: "buy" },
-                    { p: 95858.44, a: 0.00051, t: "14:30:09", s: "sell" },
-                    { p: 95857.77, a: 0.00208, t: "14:29:58", s: "buy" },
-                  ].map((r, i) => (
-                    <div
-                      key={i}
-                      className="grid grid-cols-3 px-4 py-3 text-sm text-white/80 hover:bg-white/5"
-                    >
-                      <div className={cn(r.s === "sell" ? "text-rose-400" : "text-emerald-400")}>
-                        {r.p.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </div>
-                      <div className="text-center text-white/60">{r.a}</div>
-                      <div className="text-right text-white/55">{r.t}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-3 text-xs text-white/45">
-                Click assets above to switch context. Connect wallet to enable trading.
-              </div>
-            </SoftCard>
+        <div class="hidden w-[520px] md:flex items-center justify-center">
+          <div class="w-full rounded-2xl soft-border bg-white/5 px-4 py-2 text-center text-sm text-white/70">
+            https://www.dashboard/trade.com
           </div>
+        </div>
 
-          {/* Footer padding */}
-          <div className="h-4" />
+        <div class="flex items-center gap-2">
+          <button class="rounded-xl p-2 text-white/70 hover:bg-white/5 hover:text-white" title="Download">⤓</button>
+          <button class="rounded-xl p-2 text-white/70 hover:bg-white/5 hover:text-white" title="Minimize">▭</button>
+          <button class="rounded-xl p-2 text-white/70 hover:bg-white/5 hover:text-white" title="New Tab">＋</button>
         </div>
       </div>
 
-      <div className="pb-10" />
-    </div>
-  );
-}
+      <!-- App header -->
+      <div class="flex flex-col gap-4 px-5 pb-5">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
+              <div class="grid h-10 w-10 place-items-center rounded-2xl bg-white/5">
+                <div class="h-6 w-6 rotate-12 rounded-md bg-white/90"></div>
+              </div>
+              <div class="text-xl font-semibold tracking-tight">Spectro</div>
+            </div>
 
-function Row({ label, value, green }) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="text-white/55">{label}</div>
-      <div className={cn("text-white/75", green && "text-emerald-400")}>
-        {value}
+            <!-- Nav -->
+            <div id="nav" class="flex items-center gap-1 rounded-2xl soft-border bg-white/5 p-1">
+              <!-- injected -->
+            </div>
+          </div>
+
+          <!-- Search + icons -->
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
+            <div class="relative w-full sm:w-[420px]">
+              <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40">🔎</div>
+              <input id="search"
+                placeholder="Search..."
+                class="h-11 w-full rounded-2xl soft-border bg-white/5 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/20"
+              />
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button class="rounded-2xl soft-border bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white" title="Language">🌐</button>
+              <button class="rounded-2xl soft-border bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white" title="Notifications">🔔</button>
+              <button class="rounded-2xl soft-border bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white" title="Account">👤</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Asset row -->
+        <div id="assetRow" class="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <!-- injected -->
+        </div>
       </div>
+
+      <!-- Main content -->
+      <div class="grid grid-cols-1 gap-4 px-5 pb-6 lg:grid-cols-[1.6fr_0.9fr]">
+
+        <!-- Chart Card -->
+        <div id="chartCard" class="glass rounded-2xl p-4">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2">
+                <div id="assetIcon" class="grid h-9 w-9 place-items-center rounded-2xl text-sm font-semibold bg-orange-500">₿</div>
+                <button id="assetSwitch"
+                  class="flex items-center gap-2 rounded-xl px-2 py-1 text-sm font-semibold text-white/90 hover:bg-white/5"
+                  title="Switch asset"
+                >
+                  <span id="assetName">Bitcoin</span>
+                  <span class="text-white/45">▾</span>
+                </button>
+              </div>
+
+              <div id="tfRow" class="hidden md:flex items-center gap-2"></div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 md:justify-end">
+              <div class="flex items-center gap-1 rounded-2xl soft-border bg-white/5 p-1">
+                <button id="modeLine" class="rounded-xl p-2 bg-white/10 text-white" title="Line/Area">📈</button>
+                <button id="modeCandle" class="rounded-xl p-2 text-white/60 hover:bg-white/5 hover:text-white" title="Candlestick (visual)">🕯️</button>
+              </div>
+
+              <button id="chartFocus" class="rounded-2xl soft-border bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white" title="Focus">
+                ⛶
+              </button>
+
+              <button id="quoteBtn" class="rounded-2xl soft-border bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white" title="Toggle quote">USD</button>
+            </div>
+          </div>
+
+          <div class="mt-3 grid grid-cols-[44px_1fr] gap-3">
+            <!-- Left tool rail -->
+            <div class="flex flex-col items-center gap-2">
+              <button class="grid h-10 w-10 place-items-center rounded-2xl soft-border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white" title="Compass">🧭</button>
+              <button class="grid h-10 w-10 place-items-center rounded-2xl soft-border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white" title="Chart">📊</button>
+              <button class="grid h-10 w-10 place-items-center rounded-2xl soft-border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white" title="Sliders">🎚️</button>
+              <button class="grid h-10 w-10 place-items-center rounded-2xl soft-border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white" title="Candles">🕯️</button>
+              <button class="grid h-10 w-10 place-items-center rounded-2xl soft-border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white" title="Settings">⚙️</button>
+              <div class="mt-2 h-px w-8 bg-white/10"></div>
+              <button class="grid h-10 w-10 place-items-center rounded-2xl soft-border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white" title="Text">T</button>
+            </div>
+
+            <!-- Chart surface -->
+            <div class="rounded-2xl soft-border bg-black/20 p-3">
+              <div class="h-[320px] w-full">
+                <canvas id="chart"></canvas>
+              </div>
+
+              <div class="mt-2 flex items-center justify-between text-xs text-white/45">
+                <div class="flex items-center gap-2">
+                  <span id="chartBadge" class="rounded-lg soft-border bg-white/5 px-2 py-1">Area</span>
+                  <span>•</span>
+                  <span id="pairBadge">BTC/USD</span>
+                </div>
+                <div class="text-white/35">$100.00 — $150.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order panel -->
+        <div class="glass rounded-2xl p-4">
+          <div class="flex items-center justify-between">
+            <div id="orderTabs" class="flex items-center gap-1 rounded-2xl soft-border bg-white/5 p-1"></div>
+            <button id="quickToolsBtn" class="rounded-2xl soft-border bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white" title="Quick tools">🎚️</button>
+          </div>
+
+          <div class="mt-4 space-y-3">
+            <div class="flex items-center justify-between text-sm text-white/70">
+              <div>Available to Trade :</div>
+              <div id="availableLabel" class="text-white/45">—</div>
+            </div>
+
+            <div class="flex items-center justify-between text-sm text-white/70">
+              <div>Position:</div>
+              <div class="text-white/45">—</div>
+            </div>
+
+            <div class="rounded-2xl soft-border bg-white/5 p-3">
+              <div class="flex items-center justify-between">
+                <div class="text-xs text-white/60">Amount</div>
+                <div class="flex items-center gap-2 text-xs text-white/60">
+                  <span id="amountLabel">0.00000</span>
+                  <span id="amountAsset" class="rounded-lg soft-border bg-white/5 px-2 py-1">BTC</span>
+                  <span class="text-white/45">▾</span>
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <input id="amountRange" type="range" min="0" max="100" value="20" class="w-full">
+                <div class="mt-2 flex items-center justify-between text-xs text-white/45">
+                  <div id="pctPill" class="rounded-lg soft-border bg-white/5 px-2 py-1">20%</div>
+                  <div>20 %</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <button id="buyBtn" class="h-11 rounded-2xl font-semibold transition bg-white/10 text-white/40 cursor-not-allowed">Buy/Long</button>
+              <button id="sellBtn" class="h-11 rounded-2xl font-semibold transition bg-white/10 text-white/40 cursor-not-allowed">Sell/Short</button>
+            </div>
+
+            <div class="space-y-2 text-sm text-white/70">
+              <label class="flex items-center gap-2 no-select">
+                <input id="reduceOnly" type="checkbox" class="h-4 w-4 rounded border-white/15 bg-white/5 accent-emerald-500" />
+                <span>Reduce Only</span>
+              </label>
+              <label class="flex items-center gap-2 no-select">
+                <input id="tpsl" type="checkbox" class="h-4 w-4 rounded border-white/15 bg-white/5 accent-emerald-500" />
+                <span>Take Profit / Stop Loss</span>
+              </label>
+            </div>
+
+            <button id="walletBtn" class="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-semibold transition bg-emerald-500/90 text-black hover:bg-emerald-400">
+              <span>👛</span>
+              <span id="walletBtnText">Connect Wallet to Trade</span>
+            </button>
+
+            <div class="mt-4 space-y-2 text-sm">
+              <div class="flex items-center justify-between">
+                <div class="text-white/55">Order Value:</div>
+                <div id="orderValue" class="text-white/75">—</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-white/55">Est. Liq. Price:</div>
+                <div class="text-white/75">—</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-white/55">Position Margin:</div>
+                <div class="text-white/75">$0.00</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-white/55">Est. Price:</div>
+                <div id="estPrice" class="text-white/75">—</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-white/55">Slippage:</div>
+                <div id="slippage" class="text-emerald-400">—</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-white/55">Fees:</div>
+                <div id="fees" class="text-white/75">—</div>
+              </div>
+            </div>
+
+            <!-- Quick tools panel -->
+            <div id="quickToolsPanel" class="hidden rounded-2xl soft-border bg-black/30 p-3 text-sm text-white/70">
+              <div class="flex items-center justify-between">
+                <div class="font-semibold text-white">Quick tools</div>
+                <button id="quickToolsClose" class="rounded-xl px-2 py-1 text-white/60 hover:bg-white/5 hover:text-white">Close</button>
+              </div>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                <button data-setpct="25" class="qtBtn rounded-xl soft-border bg-white/5 px-3 py-2 text-left hover:bg-white/10">Set 25%</button>
+                <button data-setpct="50" class="qtBtn rounded-xl soft-border bg-white/5 px-3 py-2 text-left hover:bg-white/10">Set 50%</button>
+                <button data-setpct="75" class="qtBtn rounded-xl soft-border bg-white/5 px-3 py-2 text-left hover:bg-white/10">Set 75%</button>
+                <button data-setpct="100" class="qtBtn rounded-xl soft-border bg-white/5 px-3 py-2 text-left hover:bg-white/10">Set 100%</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Bottom table -->
+        <div id="bottomCard" class="glass rounded-2xl p-4">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div id="bottomTabs" class="flex items-center gap-1 rounded-2xl soft-border bg-white/5 p-1"></div>
+
+            <div class="flex items-center gap-2">
+              <button id="bottomFilterBtn" class="flex items-center gap-2 rounded-2xl soft-border bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white">
+                🎚️ Filter
+              </button>
+              <button id="viewSettingsBtn" class="flex items-center gap-2 rounded-2xl soft-border bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white">
+                ⚙️ View Settings
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 overflow-hidden rounded-2xl soft-border">
+            <table class="w-full">
+              <thead class="bg-white/5">
+                <tr class="text-left text-xs text-white/55">
+                  <th class="px-4 py-3 font-medium">Date</th>
+                  <th class="px-4 py-3 font-medium">Type</th>
+                  <th class="px-4 py-3 font-medium">Price</th>
+                  <th class="px-4 py-3 font-medium">USD</th>
+                  <th class="px-4 py-3 font-medium">ZEC</th>
+                  <th class="px-4 py-3 font-medium">PAIR</th>
+                  <th class="px-4 py-3 font-medium">TRADER</th>
+                </tr>
+              </thead>
+              <tbody id="txBody" class="bg-black/20"></tbody>
+            </table>
+          </div>
+
+          <div id="viewSettingsPanel" class="hidden mt-3 rounded-2xl soft-border bg-black/30 p-3 text-sm text-white/70">
+            <div class="flex items-center justify-between">
+              <div class="font-semibold text-white">View settings</div>
+              <button id="viewSettingsClose" class="rounded-xl px-2 py-1 text-white/60 hover:bg-white/5 hover:text-white">Close</button>
+            </div>
+            <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button id="toggleChartMode" class="rounded-xl soft-border bg-white/5 px-3 py-2 text-left hover:bg-white/10">Toggle chart mode</button>
+              <button id="toggleQuote" class="rounded-xl soft-border bg-white/5 px-3 py-2 text-left hover:bg-white/10">Toggle quote</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market trades -->
+        <div class="glass rounded-2xl p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 rounded-2xl soft-border bg-white/5 p-1">
+              <button class="h-9 rounded-xl px-4 text-sm font-semibold bg-white/10 text-white">Market Trades</button>
+              <button class="h-9 rounded-xl px-4 text-sm font-semibold text-white/60 hover:bg-white/5 hover:text-white">My Trades</button>
+            </div>
+            <button class="rounded-2xl soft-border bg-white/5 p-2 text-white/60 hover:bg-white/10 hover:text-white">＋</button>
+          </div>
+
+          <div class="mt-4 overflow-hidden rounded-2xl soft-border">
+            <div class="grid grid-cols-3 bg-white/5 px-4 py-3 text-xs text-white/55">
+              <div>Price (USDT)</div>
+              <div class="text-center">Amount (BTC)</div>
+              <div class="text-right">Time</div>
+            </div>
+            <div id="marketTrades" class="divide-y divide-white/10 bg-black/20"></div>
+          </div>
+
+          <div class="mt-3 text-xs text-white/45">
+            Click assets above to switch context. Connect wallet to enable trading.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="h-4"></div>
     </div>
-  );
-}
+  </div>
+
+  <div class="pb-10"></div>
+
+  <script>
+    // ---------- State ----------
+    const state = {
+      nav: "Trade",
+      quote: "USD",
+      selectedAsset: "BTC",
+      timeframe: "1m",
+      chartMode: "line", // line | candle (visual)
+      focus: false,
+
+      orderTab: "Market",
+      amountPct: 20,
+      walletConnected: false,
+
+      bottomTab: "Transaction",
+    };
+
+    const assets = [
+      { key:"BTC", name:"Bitcoin", icon:"₿", iconBg:"bg-orange-500", amount:17.61, sub:"$1,165,173.69", priceLine:"1 BTC = $65,173.69", estPrice: 95861.89 },
+      { key:"NEAR", name:"Near", icon:"N",  iconBg:"bg-slate-800",  amount:8.60,  sub:"$2,105,103.09", priceLine:"1 NEAR = $6.24",      estPrice: 6.24 },
+      { key:"ADA", name:"Cardano", icon:"A", iconBg:"bg-blue-600",   amount:10.60, sub:"$3,150,145.60", priceLine:"1 ADA = $0.61",       estPrice: 0.61 },
+      { key:"AAVE",name:"Aave",    icon:"A", iconBg:"bg-indigo-600", amount:17.61, sub:"$1,100,153.69", priceLine:"1 AAVE = $98.43",     estPrice: 98.43 },
+    ];
+
+    const navItems = ["Dashboard","Trade","Market","Earn","More"];
+    const timeframes = ["1s","1m","5m","15m","1h","4h","D"];
+    const orderTabs = ["Market","Limit","Advance"];
+    const bottomTabs = ["Transaction","Active DCAs","Holders","Bubblemap","Top Trades"];
+
+    const txRows = [
+      { date:"24 Jan", type:"Sell", price:694.4680, usd:2.29,   zec:3.02, pair:"2.10K USDC", trader:"Binance" },
+      { date:"20 Feb", type:"Buy",  price:694.4680, usd:0.79,   zec:0.00, pair:"0.79 USDC",  trader:"Router"  },
+      { date:"15 Mar", type:"Sell", price:694.4680, usd:149.87, zec:0.22, pair:"149.88 USDC",trader:"Bybit"   },
+    ];
+
+    const marketTradesData = [
+      { p: 95861.89, a: 0.00079, t: "14:30:33", s: "sell" },
+      { p: 95860.12, a: 0.00112, t: "14:30:21", s: "buy"  },
+      { p: 95858.44, a: 0.00051, t: "14:30:09", s: "sell" },
+      { p: 95857.77, a: 0.00208, t: "14:29:58", s: "buy"  },
+    ];
+
+    // ---------- Helpers ----------
+    function $(id){ return document.getElementById(id); }
+    function fmt(n, d=2){
+      return Number(n).toLocaleString(undefined, { maximumFractionDigits:d, minimumFractionDigits:d });
+    }
+    function asset(){
+      return assets.find(a => a.key === state.selectedAsset) || assets[0];
+    }
+    function compute(){
+      const available = state.walletConnected ? 0.07980 : 0;
+      const amt = state.walletConnected ? +(available * state.amountPct / 100).toFixed(5) : 0;
+      const estPrice = asset().estPrice;
+      const orderValue = +(amt * estPrice).toFixed(2);
+      return { available, amt, estPrice, orderValue };
+    }
+
+    // ---------- Render: Nav ----------
+    function renderNav(){
+      const nav = $("nav");
+      nav.innerHTML = navItems.map(item => {
+        const active = item === state.nav;
+        return `
+          <button data-nav="${item}"
+            class="rounded-xl px-4 py-2 text-sm font-medium transition ${active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}">
+            ${item}
+          </button>
+        `;
+      }).join("");
+      nav.querySelectorAll("button[data-nav]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          state.nav = btn.dataset.nav;
+          renderNav();
+        });
+      });
+    }
+
+    // ---------- Render: Assets ----------
+    function renderAssets(){
+      const row = $("assetRow");
+      row.innerHTML = assets.map(a=>{
+        const active = a.key === state.selectedAsset;
+        return `
+          <button data-asset="${a.key}" class="text-left">
+            <div class="glass rounded-2xl p-4 transition ${active ? "soft-border2 bg-white/[0.07]" : "hover:border-white/15 hover:bg-white/[0.06]"}">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-9 w-9 place-items-center rounded-2xl text-sm font-semibold ${a.iconBg}">${a.icon}</div>
+                  <div>
+                    <div class="text-sm font-semibold">${a.name}</div>
+                    <div class="text-xs text-white/45">${String(a.amount).replace(".", ",")} ${a.key}</div>
+                    <div class="text-xs text-white/35">${a.sub}</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="rounded-xl soft-border bg-white/5 px-2 py-1 text-xs text-white/70">${state.quote}</div>
+                  <div class="text-white/45">▾</div>
+                </div>
+              </div>
+              <div class="mt-3 text-xs text-emerald-400/90">${a.priceLine}</div>
+            </div>
+          </button>
+        `;
+      }).join("");
+
+      row.querySelectorAll("button[data-asset]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          state.selectedAsset = btn.dataset.asset;
+          renderAssets();
+          syncAssetHeader();
+          syncOrderPanel();
+          syncBottom();
+        });
+      });
+    }
+
+    // ---------- Render: Timeframes ----------
+    function renderTimeframes(){
+      const tf = $("tfRow");
+      tf.innerHTML = timeframes.map(t=>{
+        const active = t === state.timeframe;
+        return `
+          <button data-tf="${t}" class="rounded-xl px-3 py-1.5 text-xs font-medium transition ${active ? "bg-white/10 text-white" : "bg-transparent text-white/60 hover:bg-white/5 hover:text-white"}">
+            ${t}
+          </button>
+        `;
+      }).join("");
+      tf.querySelectorAll("button[data-tf]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          state.timeframe = btn.dataset.tf;
+          renderTimeframes();
+          updateChart();
+        });
+      });
+    }
+
+    // ---------- Chart ----------
+    let chart;
+    function getSeries(tf){
+      const base = [
+        { t:"10.30", v:128 },
+        { t:"10.45", v:112 },
+        { t:"11.00", v:123 },
+        { t:"11.15", v:118 },
+        { t:"11.30", v:147 },
+        { t:"11.45", v:125 },
+        { t:"12.00", v:132 },
+        { t:"12.15", v:115 },
+        { t:"12.30", v:128 },
+        { t:"12.45", v:108 },
+        { t:"13.00", v:121 },
+      ];
+      const mult = (tf==="1s")?0.5:(tf==="1m")?1:(tf==="5m")?1.05:(tf==="15m")?1.1:(tf==="1h")?1.18:(tf==="4h")?1.25:1.3;
+      return base.map((p,i)=>({ t:p.t, v: Math.round((p.v*mult + (i%3)*2)*10)/10 }));
+    }
+
+    function initChart(){
+      const ctx = $("chart").getContext("2d");
+      const s = getSeries(state.timeframe);
+      const labels = s.map(x=>x.t);
+      const data = s.map(x=>x.v);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+      gradient.addColorStop(0, "rgba(34,197,94,0.35)");
+      gradient.addColorStop(1, "rgba(34,197,94,0.02)");
+
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Price",
+            data,
+            borderColor: "rgba(34,197,94,1)",
+            borderWidth: 2,
+            fill: true,
+            backgroundColor: gradient,
+            pointRadius: 0,
+            tension: 0.35,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "rgba(0,0,0,0.75)",
+              borderColor: "rgba(255,255,255,0.10)",
+              borderWidth: 1,
+              titleColor: "rgba(255,255,255,0.70)",
+              bodyColor: "rgba(255,255,255,0.95)",
+              displayColors: false,
+              callbacks: {
+                label: (ctx) => "$" + ctx.parsed.y
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: "rgba(255,255,255,0.45)", font: { size: 12 } },
+              border: { color: "rgba(255,255,255,0.08)" }
+            },
+            y: {
+              min: 100,
+              max: 150,
+              ticks: {
+                color: "rgba(255,255,255,0.45)",
+                font: { size: 12 },
+                callback: (v)=> "$" + v
+              },
+              grid: { color: "rgba(255,255,255,0.06)" },
+              border: { color: "rgba(255,255,255,0.08)" }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart(){
+      const s = getSeries(state.timeframe);
+      chart.data.labels = s.map(x=>x.t);
+      chart.data.datasets[0].data = s.map(x=>x.v);
+      // badge
+      $("chartBadge").textContent = (state.chartMode === "line") ? "Area" : "Candles";
+      $("pairBadge").textContent = `${state.selectedAsset}/${state.quote}`;
+      chart.update();
+    }
+
+    // ---------- Sync header asset area ----------
+    function syncAssetHeader(){
+      const a = asset();
+      $("assetIcon").textContent = a.icon;
+      $("assetIcon").className = `grid h-9 w-9 place-items-center rounded-2xl text-sm font-semibold ${a.iconBg}`;
+      $("assetName").textContent = a.name;
+      $("pairBadge").textContent = `${state.selectedAsset}/${state.quote}`;
+      $("amountAsset").textContent = state.selectedAsset;
+      $("quoteBtn").textContent = state.quote;
+    }
+
+    // ---------- Order Panel Sync ----------
+    function renderOrderTabs(){
+      const el = $("orderTabs");
+      el.innerHTML = orderTabs.map(t=>{
+        const active = t === state.orderTab;
+        return `
+          <button data-ordertab="${t}" class="h-9 rounded-xl px-4 text-sm font-semibold transition ${active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}">
+            ${t}
+          </button>
+        `;
+      }).join("");
+      el.querySelectorAll("button[data-ordertab]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          state.orderTab = btn.dataset.ordertab;
+          renderOrderTabs();
+        });
+      });
+    }
+
+    function syncOrderPanel(){
+      const c = compute();
+      $("pctPill").textContent = `${state.amountPct}%`;
+      $("amountRange").value = state.amountPct;
+
+      $("availableLabel").textContent = state.walletConnected ? `${c.available.toFixed(5)} ${state.selectedAsset}` : "—";
+      $("amountLabel").textContent = state.walletConnected ? c.amt.toFixed(5) : "0.00000";
+
+      $("estPrice").textContent = state.walletConnected ? `$${fmt(c.estPrice, 2)}` : "—";
+      $("orderValue").textContent = state.walletConnected ? `$${fmt(c.orderValue, 2)}` : "—";
+      $("slippage").textContent = state.walletConnected ? "Est: 0.00% | Max: 1%" : "—";
+      $("fees").textContent = state.walletConnected ? "Taker: 0% | Maker: 0%" : "—";
+
+      // buttons enabled/disabled
+      const buy = $("buyBtn");
+      const sell = $("sellBtn");
+      if(state.walletConnected){
+        buy.className = "h-11 rounded-2xl font-semibold transition bg-emerald-500/90 text-black hover:bg-emerald-400";
+        sell.className = "h-11 rounded-2xl font-semibold transition bg-white/10 text-rose-400 hover:bg-white/15";
+      } else {
+        buy.className = "h-11 rounded-2xl font-semibold transition bg-white/10 text-white/40 cursor-not-allowed";
+        sell.className = "h-11 rounded-2xl font-semibold transition bg-white/10 text-white/40 cursor-not-allowed";
+      }
+
+      // wallet button style
+      const wbtn = $("walletBtn");
+      const wtxt = $("walletBtnText");
+      if(state.walletConnected){
+        wbtn.className = "mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-semibold transition bg-white/10 text-white hover:bg-white/15";
+        wtxt.textContent = "Wallet Connected";
+      } else {
+        wbtn.className = "mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-semibold transition bg-emerald-500/90 text-black hover:bg-emerald-400";
+        wtxt.textContent = "Connect Wallet to Trade";
+      }
+    }
+
+    // ---------- Bottom Tabs / Table ----------
+    function renderBottomTabs(){
+      const el = $("bottomTabs");
+      el.innerHTML = bottomTabs.map(t=>{
+        const active = t === state.bottomTab;
+        return `
+          <button data-btab="${t}" class="h-9 rounded-xl px-3 text-xs md:text-sm font-medium transition ${active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}">
+            ${t}
+          </button>
+        `;
+      }).join("");
+      el.querySelectorAll("button[data-btab]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          state.bottomTab = btn.dataset.btab;
+          renderBottomTabs();
+          syncBottom();
+        });
+      });
+    }
+
+    function syncBottom(){
+      const body = $("txBody");
+      if(state.bottomTab !== "Transaction"){
+        body.innerHTML = `
+          <tr>
+            <td colspan="7" class="px-4 py-10 text-center text-sm text-white/55">
+              <div class="mx-auto max-w-md">
+                <div class ’’ class="text-white font-semibold">${state.bottomTab}</div>
+                <div class="mt-1 text-white/45">
+                  Panel ini interaktif (tabs). Tinggal hubungkan ke API kamu kalau sudah siap.
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      body.innerHTML = txRows.map(r=>{
+        const isSell = r.type.toLowerCase() === "sell";
+        const cls = isSell ? "text-rose-400" : "text-emerald-400";
+        return `
+          <tr class="border-t border-white/10 text-sm text-white/80 hover:bg-white/5">
+            <td class="px-4 py-3 text-white/60">${r.date}</td>
+            <td class="px-4 py-3 font-medium ${cls}">${r.type}</td>
+            <td class="px-4 py-3 ${cls}">$${r.price.toFixed(4)}</td>
+            <td class="px-4 py-3 ${cls}">$${r.usd}</td>
+            <td class="px-4 py-3 ${cls}">${r.zec.toFixed(2)}</td>
+            <td class="px-4 py-3 ${cls}">${r.pair}</td>
+            <td class="px-4 py-3 text-white/55">${r.trader}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // ---------- Market Trades ----------
+    function renderMarketTrades(){
+      const el = $("marketTrades");
+      el.innerHTML = marketTradesData.map(r=>{
+        const cls = r.s === "sell" ? "text-rose-400" : "text-emerald-400";
+        return `
+          <div class="grid grid-cols-3 px-4 py-3 text-sm text-white/80 hover:bg-white/5">
+            <div class="${cls}">${fmt(r.p, 2)}</div>
+            <div class="text-center text-white/60">${r.a}</div>
+            <div class="text-right text-white/55">${r.t}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // ---------- Events ----------
+    function bindEvents(){
+      // Search (Enter) => switch asset by keyword
+      $("search").addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){
+          const v = (e.target.value || "").trim().toLowerCase();
+          const found = assets.find(a => a.key.toLowerCase() === v || a.name.toLowerCase().includes(v));
+          if(found){
+            state.selectedAsset = found.key;
+            renderAssets();
+            syncAssetHeader();
+            syncOrderPanel();
+            syncBottom();
+            updateChart();
+          }
+        }
+      });
+
+      // Asset switch button cycles
+      $("assetSwitch").addEventListener("click", ()=>{
+        const idx = assets.findIndex(a => a.key === state.selectedAsset);
+        state.selectedAsset = assets[(idx + 1) % assets.length].key;
+        renderAssets();
+        syncAssetHeader();
+        syncOrderPanel();
+        updateChart();
+      });
+
+      // Quote toggle
+      function toggleQuote(){
+        state.quote = (state.quote === "USD") ? "USDT" : "USD";
+        $("quoteBtn").textContent = state.quote;
+        renderAssets();
+        syncAssetHeader();
+        updateChart();
+      }
+      $("quoteBtn").addEventListener("click", toggleQuote);
+
+      // Chart mode toggles
+      $("modeLine").addEventListener("click", ()=>{
+        state.chartMode = "line";
+        $("modeLine").className = "rounded-xl p-2 bg-white/10 text-white";
+        $("modeCandle").className = "rounded-xl p-2 text-white/60 hover:bg-white/5 hover:text-white";
+        updateChart();
+      });
+      $("modeCandle").addEventListener("click", ()=>{
+        state.chartMode = "candle";
+        $("modeCandle").className = "rounded-xl p-2 bg-white/10 text-white";
+        $("modeLine").className = "rounded-xl p-2 text-white/60 hover:bg-white/5 hover:text-white";
+        updateChart();
+      });
+
+      // Chart focus (simple: expand grid)
+      $("chartFocus").addEventListener("click", ()=>{
+        state.focus = !state.focus;
+        const chartCard = $("chartCard");
+        const bottomCard = $("bottomCard");
+        if(state.focus){
+          chartCard.classList.add("lg:col-span-2");
+          bottomCard.classList.add("lg:col-span-2");
+          $("chartFocus").textContent = "🗗";
+        } else {
+          chartCard.classList.remove("lg:col-span-2");
+          bottomCard.classList.remove("lg:col-span-2");
+          $("chartFocus").textContent = "⛶";
+        }
+      });
+
+      // Amount slider
+      $("amountRange").addEventListener("input", (e)=>{
+        state.amountPct = Number(e.target.value);
+        syncOrderPanel();
+      });
+
+      // Wallet connect
+      $("walletBtn").addEventListener("click", ()=>{
+        state.walletConnected = !state.walletConnected;
+        syncOrderPanel();
+      });
+
+      // Buy / Sell actions
+      $("buyBtn").addEventListener("click", ()=>{
+        if(!state.walletConnected) return;
+        const c = compute();
+        alert(`Placed ${state.orderTab} Buy/Long: ${c.amt} ${state.selectedAsset}`);
+      });
+      $("sellBtn").addEventListener("click", ()=>{
+        if(!state.walletConnected) return;
+        const c = compute();
+        alert(`Placed ${state.orderTab} Sell/Short: ${c.amt} ${state.selectedAsset}`);
+      });
+
+      // Quick tools panel
+      $("quickToolsBtn").addEventListener("click", ()=>{
+        $("quickToolsPanel").classList.toggle("hidden");
+      });
+      $("quickToolsClose").addEventListener("click", ()=>{
+        $("quickToolsPanel").classList.add("hidden");
+      });
+      document.querySelectorAll(".qtBtn").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          state.amountPct = Number(btn.dataset.setpct);
+          syncOrderPanel();
+        });
+      });
+
+      // Bottom filter just toggles quick tools too (like screenshot style)
+      $("bottomFilterBtn").addEventListener("click", ()=>{
+        $("quickToolsPanel").classList.toggle("hidden");
+      });
+
+      // View settings panel
+      $("viewSettingsBtn").addEventListener("click", ()=>{
+        $("viewSettingsPanel").classList.toggle("hidden");
+      });
+      $("viewSettingsClose").addEventListener("click", ()=>{
+        $("viewSettingsPanel").classList.add("hidden");
+      });
+      $("toggleChartMode").addEventListener("click", ()=>{
+        state.chartMode = (state.chartMode === "line") ? "candle" : "line";
+        if(state.chartMode === "line"){
+          $("modeLine").click();
+        } else {
+          $("modeCandle").click();
+        }
+      });
+      $("toggleQuote").addEventListener("click", ()=>{
+        $("quoteBtn").click();
+      });
+    }
+
+    // ---------- Boot ----------
+    function boot(){
+      renderNav();
+      renderTimeframes();
+      renderOrderTabs();
+      renderBottomTabs();
+      renderMarketTrades();
+
+      renderAssets();
+      syncAssetHeader();
+      syncOrderPanel();
+      syncBottom();
+
+      initChart();
+      updateChart();
+
+      bindEvents();
+    }
+
+    boot();
+  </script>
+</body>
+</html>
