@@ -3,34 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Testimonials Section</title>
+  <title>Testimonials Section (Placeholders)</title>
   <style>
     :root { --artboard-w: 1223; --artboard-h: 692; }
+
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
+    body{
+      margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background: #fff;
-      display: grid;
-      place-items: center;
-      min-height: 100vh;
-      padding: 24px;
+      background:#fff;
+      display:grid;
+      place-items:center;
+      min-height:100vh;
+      padding:24px;
     }
-    .testimonials { width: min(1223px, 100%); }
-    .artboard {
-      position: relative;
-      width: 100%;
+
+    .testimonials{ width:min(1223px, 100%); }
+    .artboard{
+      position:relative;
+      width:100%;
       aspect-ratio: calc(var(--artboard-w) / var(--artboard-h));
-      border-radius: 28px;
-      overflow: hidden;
-      background: #f6f6f6;
+      border-radius:28px;
+      overflow:hidden;
+      background:#f6f6f6;
       box-shadow: 0 10px 30px rgba(0,0,0,.06);
-      border: 1px solid rgba(0,0,0,.06);
+      border:1px solid rgba(0,0,0,.06);
     }
-    .artboard::before {
-      content: "";
-      position: absolute;
-      inset: 0;
+
+    /* subtle dotted vertical guides like the design */
+    .artboard::before{
+      content:"";
+      position:absolute; inset:0;
       background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.06) 0 2px, rgba(0,0,0,0) 2px 10px);
       mask-image: linear-gradient(to right,
         transparent 0%, transparent 13%, #000 13.05% 13.12%, transparent 13.12% 23%,
@@ -38,55 +41,172 @@
         #000 43.05% 43.12%, transparent 43.12% 53%, #000 53.05% 53.12%, transparent 53.12% 63%,
         #000 63.05% 63.12%, transparent 63.12% 73%, #000 73.05% 73.12%, transparent 73.12% 83%,
         #000 83.05% 83.12%, transparent 83.12% 100%);
-      opacity: .25;
-      pointer-events: none;
+      opacity:.25;
+      pointer-events:none;
     }
-    .t-card, .center-block {
-      position: absolute;
+
+    /* PHOTO PLACEHOLDER CARD */
+    .ph{
+      position:absolute;
       left: var(--x);
       top: var(--y);
       width: var(--w);
       height: var(--h);
-      object-fit: cover;
-      pointer-events: none;
-      user-select: none;
+      border-radius: 14px;
+      background:
+        radial-gradient(120% 120% at 20% 10%, rgba(255,255,255,.85), rgba(255,255,255,0) 55%),
+        linear-gradient(135deg, #d8d8d8, #bfbfbf);
+      box-shadow:
+        0 16px 30px rgba(0,0,0,.10),
+        0 1px 0 rgba(255,255,255,.6) inset;
+      overflow:hidden;
+      pointer-events:none;
+      user-select:none;
     }
-    .cta-hitbox {
-      position: absolute;
-      left: var(--x);
-      top: var(--y);
-      width: var(--w);
-      height: var(--h);
-      border-radius: 999px;
-      background: transparent;
-      text-decoration: none;
+
+    /* fake “portrait silhouette” */
+    .ph::before{
+      content:"";
+      position:absolute;
+      left:50%; top:50%;
+      width: 64%;
+      height: 64%;
+      transform: translate(-50%, -45%);
+      background:
+        radial-gradient(circle at 50% 32%, rgba(255,255,255,.55) 0 28%, rgba(255,255,255,0) 29%),
+        radial-gradient(80% 60% at 50% 78%, rgba(255,255,255,.45) 0 45%, rgba(255,255,255,0) 46%);
+      filter: blur(.2px);
+      opacity:.9;
     }
-    .cta-hitbox:focus-visible {
-      box-shadow: 0 0 0 3px rgba(0,0,0,.25);
-      outline: none;
+
+    /* center content block (HTML, bukan gambar) */
+    .center{
+      position:absolute;
+      left:26.165168%;
+      top:36.127168%;
+      width:47.669665%;
+      height:53.468208%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+    }
+    .center-inner{
+      width: min(520px, 92%);
+      text-align:center;
+      pointer-events:auto;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:8px 14px;
+      border-radius:999px;
+      background:#ececec;
+      color:#4b4b4b;
+      font-size:12px;
+      font-weight:600;
+      letter-spacing:.2px;
+      margin-bottom:18px;
+    }
+
+    h2{
+      margin:0;
+      font-size:44px;
+      line-height:1.05;
+      letter-spacing:-.5px;
+      color:#111;
+    }
+    h2 .muted{
+      display:block;
+      font-weight:500;
+      color:#b7b7b7;
+      margin-top:8px;
+    }
+
+    p{
+      margin:18px 0 22px;
+      color:#4a4a4a;
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 18px;
+      border-radius:999px;
+      background:#111;
+      color:#fff;
+      font-size:13px;
+      font-weight:600;
+      text-decoration:none;
+      box-shadow: 0 12px 22px rgba(0,0,0,.18);
+    }
+    .btn span{ opacity:.95; }
+    .btn svg{ width:14px; height:14px; }
+
+    /* keep exact clickable hitbox like original */
+    .cta-hitbox{
+      position:absolute;
+      left:42.027800%;
+      top:82.803468%;
+      width:16.026165%;
+      height:5.346821%;
+      border-radius:999px;
+      background:transparent;
+      text-decoration:none;
+      pointer-events:auto;
+    }
+    .cta-hitbox:focus-visible{
+      outline:none;
+      box-shadow:0 0 0 3px rgba(0,0,0,.25);
     }
   </style>
 </head>
 <body>
   <section class="testimonials" aria-label="Testimonials">
     <div class="artboard">
-      <img class="t-card" style="--x:15.535568%;--y:9.537572%;--w:9.566639%;--h:20.375723%;" src="assets/card_01.png" alt="Testimonial portrait 1"/>
-      <img class="t-card" style="--x:74.979558%;--y:9.537572%;--w:9.566639%;--h:20.375723%;" src="assets/card_02.png" alt="Testimonial portrait 2"/>
-      <img class="t-card" style="--x:55.192150%;--y:9.971098%;--w:9.566639%;--h:20.520231%;" src="assets/card_03.png" alt="Testimonial portrait 3"/>
-      <img class="t-card" style="--x:35.404742%;--y:10.404624%;--w:9.484873%;--h:20.520231%;" src="assets/card_04.png" alt="Testimonial portrait 4"/>
-      <img class="t-card" style="--x:45.298446%;--y:15.028902%;--w:9.566639%;--h:20.664740%;" src="assets/card_05.png" alt="Testimonial portrait 5"/>
-      <img class="t-card" style="--x:84.955029%;--y:16.763006%;--w:9.484873%;--h:20.664740%;" src="assets/card_06.png" alt="Testimonial portrait 6"/>
-      <img class="t-card" style="--x:5.641864%;--y:16.907514%;--w:9.566639%;--h:20.520231%;" src="assets/card_07.png" alt="Testimonial portrait 7"/>
-      <img class="t-card" style="--x:65.004088%;--y:18.208092%;--w:9.648406%;--h:20.664740%;" src="assets/card_08.png" alt="Testimonial portrait 8"/>
-      <img class="t-card" style="--x:25.429272%;--y:18.352601%;--w:9.566639%;--h:20.520231%;" src="assets/card_09.png" alt="Testimonial portrait 9"/>
-      <img class="t-card" style="--x:15.535568%;--y:30.635838%;--w:9.566639%;--h:20.664740%;" src="assets/card_10.png" alt="Testimonial portrait 10"/>
-      <img class="t-card" style="--x:75.224857%;--y:31.069364%;--w:9.076043%;--h:23.988439%;" src="assets/card_11.png" alt="Testimonial portrait 11"/>
-      <img class="t-card" style="--x:5.641864%;--y:38.150289%;--w:9.566639%;--h:20.520231%;" src="assets/card_12.png" alt="Testimonial portrait 12"/>
-      <img class="t-card" style="--x:84.873262%;--y:38.150289%;--w:9.566639%;--h:20.375723%;" src="assets/card_13.png" alt="Testimonial portrait 13"/>
 
-      <img class="center-block" style="--x:26.165168%;--y:36.127168%;--w:47.669665%;--h:53.468208%;" src="assets/central_block2.png" alt="Testimonials content"/>
+      <!-- placeholders (posisi & size 100% sama) -->
+      <div class="ph" style="--x:15.535568%;--y:9.537572%;--w:9.566639%;--h:20.375723%;"></div>
+      <div class="ph" style="--x:74.979558%;--y:9.537572%;--w:9.566639%;--h:20.375723%;"></div>
+      <div class="ph" style="--x:55.192150%;--y:9.971098%;--w:9.566639%;--h:20.520231%;"></div>
+      <div class="ph" style="--x:35.404742%;--y:10.404624%;--w:9.484873%;--h:20.520231%;"></div>
+      <div class="ph" style="--x:45.298446%;--y:15.028902%;--w:9.566639%;--h:20.664740%;"></div>
+      <div class="ph" style="--x:84.955029%;--y:16.763006%;--w:9.484873%;--h:20.664740%;"></div>
+      <div class="ph" style="--x:5.641864%;--y:16.907514%;--w:9.566639%;--h:20.520231%;"></div>
+      <div class="ph" style="--x:65.004088%;--y:18.208092%;--w:9.648406%;--h:20.664740%;"></div>
+      <div class="ph" style="--x:25.429272%;--y:18.352601%;--w:9.566639%;--h:20.520231%;"></div>
+      <div class="ph" style="--x:15.535568%;--y:30.635838%;--w:9.566639%;--h:20.664740%;"></div>
+      <div class="ph" style="--x:75.224857%;--y:31.069364%;--w:9.076043%;--h:23.988439%;"></div>
+      <div class="ph" style="--x:5.641864%;--y:38.150289%;--w:9.566639%;--h:20.520231%;"></div>
+      <div class="ph" style="--x:84.873262%;--y:38.150289%;--w:9.566639%;--h:20.375723%;"></div>
 
-      <a class="cta-hitbox" style="--x:42.027800%;--y:82.803468%;--w:16.026165%;--h:5.346821%;" href="#" aria-label="Read Success Stories"></a>
+      <!-- center content -->
+      <div class="center">
+        <div class="center-inner">
+          <div class="pill">Testimonials</div>
+          <h2>
+            Trusted by leaders
+            <span class="muted">from various industries</span>
+          </h2>
+          <p>Learn why professionals trust our solutions to<br/>complete their customer journeys.</p>
+          <a class="btn" href="#" aria-label="Read Success Stories">
+            <span>Read Success Stories</span>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M13 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 12h15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- exact hitbox position (optional but keeps parity) -->
+      <a class="cta-hitbox" href="#" aria-label="Read Success Stories"></a>
+
     </div>
   </section>
 </body>
